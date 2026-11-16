@@ -1,17 +1,27 @@
-// Driver for the markdown-render-speed-02 entry: reads every case from
-// <input>/cases.json, renders each one with parse() from ./parse.js, and
-// writes the HTML strings (same order) as JSON to <output>/html.json.
-// Paths come from MAKEFUN_INPUT_DIR / MAKEFUN_OUTPUT_DIR, defaulting to
-// the harness mounts /input and /output. Node 22 erasable-syntax TS.
+// Harness driver: turn the graded case list into the HTML list.
+//
+// The grader mounts the case set at /input/cases.json (a JSON array of
+// { id, markdown }) and expects /output/html.json to hold a JSON array of
+// the rendered HTML strings, one per case, in the same order. Each case is
+// rendered on its own through parse() from ./parse.js — nothing is shared
+// or remembered between cases. When run outside the grader, the two
+// directories can be overridden with MAKEFUN_INPUT_DIR and
+// MAKEFUN_OUTPUT_DIR. Runs on Node 22 type stripping, so this file uses
+// erasable TypeScript syntax only (no enums, namespaces, or parameter
+// properties).
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parse } from './parse.js';
 
-const INPUT_DIR: string = process.env.MAKEFUN_INPUT_DIR ?? '/input';
-const OUTPUT_DIR: string = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
+const inputDir = process.env.MAKEFUN_INPUT_DIR ?? '/input';
+const outputDir = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
-const cases = JSON.parse(readFileSync(join(INPUT_DIR, 'cases.json'), 'utf8')) as { id: string; markdown: string }[];
-const html: string[] = new Array(cases.length);
-for (let i = 0; i < cases.length; i++) html[i] = parse(cases[i].markdown);
-writeFileSync(join(OUTPUT_DIR, 'html.json'), JSON.stringify(html));
+const cases = JSON.parse(readFileSync(join(inputDir, 'cases.json'), 'utf8'));
+const rendered = [];
+for (const c of cases) {
+  rendered.push(parse(c.markdown));
+}
+
+mkdirSync(outputDir, { recursive: true });
+writeFileSync(join(outputDir, 'html.json'), JSON.stringify(rendered));
